@@ -1,0 +1,137 @@
+// Copyright 2015, Beeswax.IO Inc.
+//
+// Beeswax bidder API.
+
+syntax="proto2";
+package bid;
+
+option java_package = "com.beeswax.bid";
+
+import "beeswax/bid/adcandidate.proto";
+import "beeswax/openrtb/openrtb.proto";
+
+// Stinger will issue a HTTP request to the bid agent.
+// The following message will be present in the body of the HTTP request.
+message BidAgentRequest {
+  // Fully augmented bid request.
+  optional openrtb.BidRequest bid_request = 1;
+  // Adcandidate is a wrapper around a line item and creatives.
+  // Stinger determines all the adcandidates that are eligible to serve for
+  // the given bid request.
+  repeated Adcandidate adcandidates = 2;
+}
+
+// Bid agent will respond to Stinger with a HTTP response.
+// The following message will be present in the body of the HTTP response.
+// BidAgent can choose not to bid at all in which case it must still
+// respond to the HTTP request with a 204 status code.
+message BidAgentResponse {
+
+  // AgentParams are typed <key,value> pairs denoting some custom attributes
+  // of the Bid agent.
+  // These params are logged and are available via Bid logs.
+  // Some use cases of AgentParams:
+  // - If the bidding agent uses a machine learning model, some of its
+  //   attributes can be passed in via AgentParams.
+  // Next Id: 6
+  message AgentParams {
+    optional string key = 1;
+    oneof value_oneof {
+      string string_value = 2;
+      int32 int_value = 3;
+      double double_value = 4;
+      bool bool_value = 5;
+    }
+  }
+
+  // Next Id: 3
+  // AgentData is a container for the AgentParams (defined above) and an
+  // identifier for the Agent.
+  // A use case for agent_id could be the release version of the Bid Agent.
+  message AgentData {
+    optional string agent_id = 1;
+    repeated AgentParams agent_params = 2;
+  }
+
+  // Next Id: 5
+  // Creative represents the creative to be rendered in the openrtb bid
+  // response.
+  message Creative {
+    // The id of the chosen creative. It should be one of the ids in
+    // Adcandidate.creative_ids where the Adcandidate's line_item_id ==
+    // Bid.line_item_id for the Bid containing this Creative message,
+    // otherwise the bid will not be processed.
+    optional uint64 id = 1;
+    // Pixels that will be fired when the creative is served in addition
+    // to the `pixels` field, which is set in `creative` object from buzz.
+    // (see http://docs.beeswax.com/docs/creative)
+    // This field should not be populated when the battr field has
+    // AD_SUPPORTS_DYNAMIC_PIXELS(108), otherwise this bid will not be
+    // processed.
+    // battr field is under BidAgentRequest.bid_request.imp.(banner/video).battr
+    // ; whether it is banner or video corresponds to the type of this creative.
+    repeated string pixels = 2;
+    // The `creative` object's `click_url` field, which is set from buzz,
+    // will be replaced with this value if it is present.
+    // (see http://docs.beeswax.com/docs/creative)
+    // This field should not be populated when the battr field has
+    // AD_SUPPORTS_DYNAMIC_CLICK_URL(109), otherwise this bid will not be
+    // processed.
+    // battr field is under BidAgentRequest.bid_request.imp.(banner/video).battr
+    // ; whether it is banner or video corresponds to the type of this creative.
+    optional string click_url_override = 3;
+    // The creative's macros {{DYNAMIC:<name>:STRING}} in the value of a
+    // creative content or creative template, will be replaced with the
+    // content of `value`.
+    // For example, if name = "foo", value = "bar", the macro
+    // {{DYNAMIC:FOO:STRING}} will be replaced with "bar".
+    //
+    // Please note the following constraints:
+    // (1) Macro expansion will only apply to the creative of the same id as
+    // this containing creative object.
+    // (2) Macro name is case-insensitive. (if name = "foo",
+    // the macro {{DYNAMIC:FOO:STRING}} will still be replaced)
+    // (3) Beeswax will pick up the first 5 dynamic macros. Additional ones will
+    // be ignored.
+    // (4) For a macro to be expanded as an empty string, you should
+    // explicitly set the macro name in the `name` field, and leave the
+    // `value` feild empty; Dynamic macros in creatives that does
+    // not have a match from the `name` field here will not be expanded.
+    // (5) If a dynamic macro was not expanded, a string of {{DY:<name>}}
+    // (instead of {{DYNAMIC:<name>:STRING}}) will be placed at where the
+    // {{DYNAMIC:<name>:STRING}} macro was placed.
+    // (6) Values of dynamic macros cannot contain other Beeswax macros,
+    // (including other dynamic macros), as the contained macros will
+    // not be expanded.
+    // (7) If the macro is part of a url, the value shold be url-safe
+    // (e.g, by escaping). Note that click_url is properly escaped as a whole,
+    // so if the macro is in click_url, its value does not need to
+    // have extra escaping; url-safe is enough.
+    //
+    message Macro {
+      optional string name = 1;
+      optional string value = 2;
+    }
+    repeated Macro dynamic_macros = 4;
+  }
+
+  // Bid agent needs to select a set of Adcandidates from the request
+  // and for each Adcandidate, submit a bid containing the following
+  // information.
+  message Bid {
+    optional uint64 line_item_id = 1;
+    // Deprecated, use bid_price_micros instead.
+    // (1) Beeswax will do validation (see (2)) and use this value only if
+    // bid_price_micros is not populated.
+    // (2) Validation: The adcandidate with this line_item_id in the
+    // BidAgentRequest must have bidding.currency set to USD;
+    // otherwise this bid will be dropped.
+    optional uint64 bid_price_micros_usd = 2 [default = 0, deprecated = true];
+    // Value should be the price of a single impression. Ex: 12$ CPM = 0.012$ => bid_price_micros = 12000
+    optional uint64 bid_price_micros = 6 [default = 0];
+    optional uint64 creative_id = 3 [deprecated = true];
+    optional Creative creative = 5;
+    optional AgentData agent_data = 4;
+  }
+  repeated Bid bids = 1;
+}
