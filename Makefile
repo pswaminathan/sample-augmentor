@@ -6,7 +6,7 @@ build:
 	go build $(FLAGS) -o augmentor
 
 test:
-	go test $(FLAGS) ./...
+	go test -v $(FLAGS) ./...
 
 artifact:
 	GOOS=linux GOARCH=amd64 go build $(FLAGS) -o augmentor_linux_amd64

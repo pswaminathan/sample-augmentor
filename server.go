@@ -43,6 +43,10 @@ func getUserID(br *openrtb.BidRequest) string {
 	return ue.GetUserId()
 }
 
+// augmentHandler reads the request, which should be a POST
+// with a protobuf augmentor request in the body, looks up the
+// user ID to retrieve a segment to enrich, and writes
+// the response back.
 func augmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the request's body into a bytes.Buffer
 	buf := bufPool.Get().(*bytes.Buffer)
@@ -52,7 +56,6 @@ func augmentHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 	n, _ := buf.ReadFrom(r.Body)
 	if n == 0 {
-		log.Println("No body")
 		w.Header().Set("X-Pass-Reason", "No body")
 		w.WriteHeader(204)
 		return
@@ -62,7 +65,6 @@ func augmentHandler(w http.ResponseWriter, r *http.Request) {
 	augReq := new(augment.AugmentorRequest)
 	err := proto.Unmarshal(buf.Bytes(), augReq)
 	if err != nil {
-		log.Printf("Protubuf unmarshal error: %v", err)
 		w.Header().Set("X-Pass-Reason", "Protobuf unmarshal error")
 		w.WriteHeader(204)
 		return
@@ -71,9 +73,7 @@ func augmentHandler(w http.ResponseWriter, r *http.Request) {
 	// Get the UUID from the request and retrieve the segment from Redis
 	uuid := getUserID(augReq.GetBidRequest())
 	id := getScoredSegment(conn, uuid)
-	log.Printf("%#v:\t%#v\n", uuid, id)
 	if id == "" {
-		log.Printf("No segment for user %v", uuid)
 		w.Header().Set("X-Pass-Reason", "No segment to augment")
 		w.WriteHeader(204)
 		return

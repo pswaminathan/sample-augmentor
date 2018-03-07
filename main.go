@@ -20,7 +20,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Redis addr: %v", addr)
 	err = newRedis(addr)
 	if err != nil {
 		log.Fatal(err)

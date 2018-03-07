@@ -93,7 +93,7 @@ func TestAugment_segment(t *testing.T) {
 	if segs == nil || len(segs) == 0 || segs[0] == nil {
 		t.Errorf("response segments is bad: %v", segs)
 	}
-	if gotSeg := *(segs[0].Id); gotSeg != wantSeg {
+	if gotSeg := *(segs[0]).Id; gotSeg != wantSeg {
 		t.Errorf("bad response segment: got %v, want %v", gotSeg, wantSeg)
 	}
 }
@@ -144,14 +144,3 @@ func getBRWithUserID(userID string) *openrtb.BidRequest {
 		},
 	}
 }
-
-// func getPostBodyFromUserID(userID string) []byte {
-// 	br := getBRWithUserID(userID)
-// 	d, err := proto.Marshal(br)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return d
-// }
-
-// func loadSampleProto(path string) []byte {}
