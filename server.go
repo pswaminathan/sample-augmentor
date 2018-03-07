@@ -22,7 +22,8 @@ func init() {
 		ReadTimeout:  1 * time.Second,
 		WriteTimeout: 1 * time.Second,
 	}
-	http.HandleFunc("/augment", augmentHandler)
+	finalHandler := http.HandlerFunc(augmentHandler)
+	http.Handle("/augment", loggingHandler(finalHandler))
 	bufPool = &sync.Pool{
 		New: func() interface{} {
 			return new(bytes.Buffer)
