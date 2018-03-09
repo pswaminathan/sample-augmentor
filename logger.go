@@ -29,12 +29,12 @@ var (
 // loggingHandler is an http middleware that logs information about its children.
 // It logs the status code, latency, method, path, and the reason for returning a
 // 204 if provided.
-func loggingHandler(next http.Handler) http.Handler {
+func loggingHandler(logger *log.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 		next.ServeHTTP(lrw, r)
-		augLogger.Printf("%3d | %13v | %-7s %s | %s",
+		logger.Printf("%3d | %13v | %-7s %s | %s",
 			lrw.statusCode,
 			time.Since(start),
 			r.Method,
@@ -72,6 +72,7 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 	if err != nil {
 		return
 	}
-	n, err = w.out.Write(p)
+	written, err := w.out.Write(p)
+	n += written
 	return
 }

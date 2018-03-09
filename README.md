@@ -1,4 +1,7 @@
 # sample-augmentor
+
+[![Build Status](https://travis-ci.org/pswaminathan/sample-augmentor.svg?branch=master)](https://travis-ci.org/pswaminathan/sample-augmentor)
+
 Sample Data Augmentor for Beeswax
 
 ## Objectives
@@ -30,3 +33,7 @@ $ ./augmentor -samplefile testdata/sample_data.json
 ```
 
 In order to build on it and/or work with the vendored packages, you will need [dep](https://github.com/golang/dep) to manage external Go dependencies, and the protobuf compiler and [gogoprotobuf](https://github.com/gogo/protobuf) to compile the protos.
+
+## TODO
+
+- Inject dependencies on, e.g., `redis.Conn` instead of using globals
