@@ -34,10 +34,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer redis.Close()
 	err = newRedis(addr)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer conn.Close()
 
 	f, err := os.Open(sampleFile)
 	if err != nil {

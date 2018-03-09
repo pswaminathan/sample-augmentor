@@ -59,9 +59,11 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+	defer server.Close()
 	c, err = redis.Dial("tcp", addr)
 	if err != nil {
 		panic(err)
 	}
+	defer c.Close()
 	os.Exit(m.Run())
 }

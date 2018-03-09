@@ -37,6 +37,11 @@ func Start() (string, error) {
 	return server.Addr(), nil
 }
 
+// Close closes the Miniredis server
+func Close() {
+	server.Close()
+}
+
 type segment struct {
 	UUID string `json:"uuid"`
 	ID   string `json:"segment"`
