@@ -33,6 +33,7 @@ const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 // Stinger will issue a HTTP request to the augmentor.
 // The following message will be present in the body of the HTTP request.
+// Next id: 2
 type AugmentorRequest struct {
 	// Bid request received from the exchange after it has been processed by Beeswax.
 	BidRequest       *openrtb2.BidRequest `protobuf:"bytes,1,opt,name=bid_request,json=bidRequest" json:"bid_request,omitempty"`
@@ -58,9 +59,11 @@ func (m *AugmentorRequest) GetBidRequest() *openrtb2.BidRequest {
 //
 // Also custom bidding agents can receive this data through the augmentor_data field in
 // the BidRequestExtension.
+// Next id: 3
 type AugmentorResponse struct {
 	// Array of Augmentor segments
 	Segments         []*AugmentorResponse_Segment `protobuf:"bytes,1,rep,name=segments" json:"segments,omitempty"`
+	DynamicMacros    []*AugmentorResponse_Macro   `protobuf:"bytes,2,rep,name=dynamic_macros,json=dynamicMacros" json:"dynamic_macros,omitempty"`
 	XXX_unrecognized []byte                       `json:"-"`
 }
 
@@ -72,6 +75,13 @@ func (*AugmentorResponse) Descriptor() ([]byte, []int) { return fileDescriptorAu
 func (m *AugmentorResponse) GetSegments() []*AugmentorResponse_Segment {
 	if m != nil {
 		return m.Segments
+	}
+	return nil
+}
+
+func (m *AugmentorResponse) GetDynamicMacros() []*AugmentorResponse_Macro {
+	if m != nil {
+		return m.DynamicMacros
 	}
 	return nil
 }
@@ -109,10 +119,65 @@ func (m *AugmentorResponse_Segment) GetValue() string {
 	return ""
 }
 
+// The creative's macros {{DYNAMIC:<name>:STRING}} in the value of a
+// creative content or creative template, will be replaced with the
+// content of `value`.
+// For example, if name = "foo", value = "bar", the macro
+// {{DYNAMIC:FOO:STRING}} will be replaced with "bar".
+//
+// Please note the following constraints:
+// (1) Macro values sent via the custom augmentor will apply to whatever
+// creative matches to the request. In other words, they are not specific
+// to a particular creative or line item.
+// (2) Macro name is case-insensitive. (if name = "foo",
+// the macro {{DYNAMIC:FOO:STRING}} will still be replaced)
+// (3) For a macro to be expanded as an empty string, you should
+// explicitly set the macro name in the `name` field, and leave the
+// `value` feild empty; Dynamic macros in creatives that does
+// not have a match from the `name` field here will not be expanded.
+// (4) If a dynamic macro was not expanded, a string of {{DY:<name>}}
+// (instead of {{DYNAMIC:<name>:STRING}}) will be placed at where the
+// {{DYNAMIC:<name>:STRING}} macro was placed.
+// (5) Values of dynamic macros cannot contain other Beeswax macros,
+// (including other dynamic macros), as the contained macros will
+// not be expanded.
+// (6) If the macro is part of a url, the value shold be url-safe
+// (e.g, by escaping). Note that click_url is properly escaped as a whole,
+// so if the macro is in click_url, its value does not need to
+// have extra escaping; url-safe is enough.
+// Next id: 3
+type AugmentorResponse_Macro struct {
+	Name             *string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Value            *string `protobuf:"bytes,2,opt,name=value" json:"value,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *AugmentorResponse_Macro) Reset()         { *m = AugmentorResponse_Macro{} }
+func (m *AugmentorResponse_Macro) String() string { return proto.CompactTextString(m) }
+func (*AugmentorResponse_Macro) ProtoMessage()    {}
+func (*AugmentorResponse_Macro) Descriptor() ([]byte, []int) {
+	return fileDescriptorAugmentor, []int{1, 1}
+}
+
+func (m *AugmentorResponse_Macro) GetName() string {
+	if m != nil && m.Name != nil {
+		return *m.Name
+	}
+	return ""
+}
+
+func (m *AugmentorResponse_Macro) GetValue() string {
+	if m != nil && m.Value != nil {
+		return *m.Value
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*AugmentorRequest)(nil), "augment.AugmentorRequest")
 	proto.RegisterType((*AugmentorResponse)(nil), "augment.AugmentorResponse")
 	proto.RegisterType((*AugmentorResponse_Segment)(nil), "augment.AugmentorResponse.Segment")
+	proto.RegisterType((*AugmentorResponse_Macro)(nil), "augment.AugmentorResponse.Macro")
 }
 func (m *AugmentorRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
@@ -172,6 +237,18 @@ func (m *AugmentorResponse) MarshalTo(dAtA []byte) (int, error) {
 			i += n
 		}
 	}
+	if len(m.DynamicMacros) > 0 {
+		for _, msg := range m.DynamicMacros {
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintAugmentor(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
+		}
+	}
 	if m.XXX_unrecognized != nil {
 		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
@@ -198,6 +275,39 @@ func (m *AugmentorResponse_Segment) MarshalTo(dAtA []byte) (int, error) {
 		i++
 		i = encodeVarintAugmentor(dAtA, i, uint64(len(*m.Id)))
 		i += copy(dAtA[i:], *m.Id)
+	}
+	if m.Value != nil {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintAugmentor(dAtA, i, uint64(len(*m.Value)))
+		i += copy(dAtA[i:], *m.Value)
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
+}
+
+func (m *AugmentorResponse_Macro) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AugmentorResponse_Macro) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.Name != nil {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintAugmentor(dAtA, i, uint64(len(*m.Name)))
+		i += copy(dAtA[i:], *m.Name)
 	}
 	if m.Value != nil {
 		dAtA[i] = 0x12
@@ -242,6 +352,12 @@ func (m *AugmentorResponse) Size() (n int) {
 			n += 1 + l + sovAugmentor(uint64(l))
 		}
 	}
+	if len(m.DynamicMacros) > 0 {
+		for _, e := range m.DynamicMacros {
+			l = e.Size()
+			n += 1 + l + sovAugmentor(uint64(l))
+		}
+	}
 	if m.XXX_unrecognized != nil {
 		n += len(m.XXX_unrecognized)
 	}
@@ -253,6 +369,23 @@ func (m *AugmentorResponse_Segment) Size() (n int) {
 	_ = l
 	if m.Id != nil {
 		l = len(*m.Id)
+		n += 1 + l + sovAugmentor(uint64(l))
+	}
+	if m.Value != nil {
+		l = len(*m.Value)
+		n += 1 + l + sovAugmentor(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *AugmentorResponse_Macro) Size() (n int) {
+	var l int
+	_ = l
+	if m.Name != nil {
+		l = len(*m.Name)
 		n += 1 + l + sovAugmentor(uint64(l))
 	}
 	if m.Value != nil {
@@ -422,6 +555,37 @@ func (m *AugmentorResponse) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DynamicMacros", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAugmentor
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthAugmentor
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.DynamicMacros = append(m.DynamicMacros, &AugmentorResponse_Macro{})
+			if err := m.DynamicMacros[len(m.DynamicMacros)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipAugmentor(dAtA[iNdEx:])
@@ -502,6 +666,117 @@ func (m *AugmentorResponse_Segment) Unmarshal(dAtA []byte) error {
 			}
 			s := string(dAtA[iNdEx:postIndex])
 			m.Id = &s
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAugmentor
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAugmentor
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			s := string(dAtA[iNdEx:postIndex])
+			m.Value = &s
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAugmentor(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthAugmentor
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AugmentorResponse_Macro) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAugmentor
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Macro: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Macro: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAugmentor
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAugmentor
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			s := string(dAtA[iNdEx:postIndex])
+			m.Name = &s
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
@@ -663,19 +938,22 @@ var (
 func init() { proto.RegisterFile("beeswax/augment/augmentor.proto", fileDescriptorAugmentor) }
 
 var fileDescriptorAugmentor = []byte{
-	// 217 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4f, 0x4a, 0x4d, 0x2d,
-	0x2e, 0x4f, 0xac, 0xd0, 0x4f, 0x2c, 0x4d, 0xcf, 0x4d, 0xcd, 0x2b, 0x81, 0xd1, 0xf9, 0x45, 0x7a,
-	0x05, 0x45, 0xf9, 0x25, 0xf9, 0x42, 0xec, 0x50, 0x01, 0x29, 0x59, 0x98, 0xca, 0xfc, 0x82, 0xd4,
-	0xbc, 0xa2, 0x92, 0x24, 0x18, 0x0d, 0x51, 0xa7, 0xe4, 0xc1, 0x25, 0xe0, 0x08, 0xd3, 0x1a, 0x94,
-	0x5a, 0x58, 0x9a, 0x5a, 0x5c, 0x22, 0x64, 0xc2, 0xc5, 0x9d, 0x94, 0x99, 0x12, 0x5f, 0x04, 0xe1,
-	0x4a, 0x30, 0x2a, 0x30, 0x6a, 0x70, 0x1b, 0x09, 0xeb, 0xc1, 0x34, 0x3a, 0x65, 0xa6, 0x40, 0x55,
-	0x06, 0x71, 0x25, 0xc1, 0xd9, 0x4a, 0x2d, 0x8c, 0x5c, 0x82, 0x48, 0x46, 0x15, 0x17, 0xe4, 0xe7,
-	0x15, 0xa7, 0x0a, 0xd9, 0x71, 0x71, 0x14, 0xa7, 0x82, 0x05, 0x8b, 0x25, 0x18, 0x15, 0x98, 0x35,
-	0xb8, 0x8d, 0x94, 0xf4, 0xa0, 0x4e, 0xd3, 0xc3, 0x50, 0xad, 0x17, 0x0c, 0x51, 0x1a, 0x04, 0xd7,
-	0x23, 0xa5, 0xcf, 0xc5, 0x0e, 0x15, 0x14, 0xe2, 0xe3, 0x62, 0xca, 0x4c, 0x01, 0xbb, 0x86, 0x33,
-	0x88, 0x29, 0x33, 0x45, 0x48, 0x84, 0x8b, 0xb5, 0x2c, 0x31, 0xa7, 0x34, 0x55, 0x82, 0x09, 0x2c,
-	0x04, 0xe1, 0x38, 0x29, 0x9e, 0x78, 0x24, 0xc7, 0x78, 0xe1, 0x91, 0x1c, 0xe3, 0x83, 0x47, 0x72,
-	0x8c, 0x5c, 0xc2, 0xc9, 0xf9, 0xb9, 0x7a, 0xd0, 0x10, 0x80, 0xd9, 0x0b, 0x08, 0x00, 0x00, 0xff,
-	0xff, 0x2b, 0x14, 0xb3, 0x32, 0x3d, 0x01, 0x00, 0x00,
+	// 270 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x90, 0xcb, 0x4a, 0xc4, 0x30,
+	0x14, 0x86, 0x49, 0x75, 0x18, 0x3d, 0xc5, 0x41, 0x33, 0x2e, 0x4a, 0xc1, 0x5a, 0xbb, 0x9a, 0x55,
+	0x06, 0x07, 0xd7, 0x82, 0xb3, 0xd1, 0x8d, 0x9b, 0xfa, 0x00, 0x43, 0xda, 0x1e, 0x24, 0x60, 0x92,
+	0x9a, 0xb4, 0x5e, 0x76, 0x3e, 0x9e, 0x4b, 0x1f, 0x41, 0xfa, 0x24, 0x62, 0x9a, 0x0c, 0x82, 0xe2,
+	0xea, 0x5c, 0xf8, 0xbe, 0x9f, 0x93, 0xc0, 0x69, 0x85, 0x68, 0x9f, 0xf9, 0xcb, 0x92, 0xf7, 0xf7,
+	0x12, 0x55, 0x17, 0xaa, 0x36, 0xac, 0x35, 0xba, 0xd3, 0x74, 0xea, 0x17, 0xe9, 0x49, 0x20, 0x75,
+	0x8b, 0xca, 0x74, 0x55, 0xa8, 0x23, 0x57, 0xdc, 0xc0, 0xe1, 0x55, 0x50, 0x4b, 0x7c, 0xec, 0xd1,
+	0x76, 0xf4, 0x02, 0xe2, 0x4a, 0x34, 0x1b, 0x33, 0x8e, 0x09, 0xc9, 0xc9, 0x22, 0x5e, 0xcd, 0x59,
+	0x10, 0xd7, 0xa2, 0xf1, 0x64, 0x09, 0xd5, 0xb6, 0x2f, 0xde, 0x22, 0x38, 0xfa, 0x11, 0x65, 0x5b,
+	0xad, 0x2c, 0xd2, 0x4b, 0xd8, 0xb3, 0xe8, 0x96, 0x36, 0x21, 0xf9, 0xce, 0x22, 0x5e, 0x15, 0xcc,
+	0x9f, 0xc6, 0x7e, 0xd1, 0xec, 0x6e, 0x44, 0xcb, 0xad, 0x43, 0xaf, 0x61, 0xd6, 0xbc, 0x2a, 0x2e,
+	0x45, 0xbd, 0x91, 0xbc, 0x36, 0xda, 0x26, 0x91, 0x4b, 0xc9, 0xff, 0x49, 0xb9, 0xfd, 0x06, 0xcb,
+	0x03, 0xef, 0xb9, 0xc9, 0xa6, 0x4b, 0x98, 0xfa, 0x74, 0x3a, 0x83, 0x48, 0x34, 0xee, 0x59, 0xfb,
+	0x65, 0x24, 0x1a, 0x7a, 0x0c, 0x93, 0x27, 0xfe, 0xd0, 0x63, 0x12, 0xb9, 0xd5, 0x38, 0xa4, 0xe7,
+	0x30, 0x71, 0x2a, 0xa5, 0xb0, 0xab, 0xb8, 0x44, 0x2f, 0xb8, 0xfe, 0x6f, 0x65, 0x7d, 0xf6, 0x3e,
+	0x64, 0xe4, 0x63, 0xc8, 0xc8, 0xe7, 0x90, 0x11, 0x98, 0xd7, 0x5a, 0x32, 0xff, 0xfb, 0xe1, 0xda,
+	0xaf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x54, 0x5a, 0x1f, 0xf7, 0xb9, 0x01, 0x00, 0x00,
 }
