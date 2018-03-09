@@ -1,4 +1,4 @@
-.PHONY: build vendor proto vendor_dep_ensure test artifact
+.PHONY: build vendor proto vendor_dep_ensure test artifact update_subtree
 
 all: build
 
@@ -20,3 +20,15 @@ vendor: vendor_dep_ensure proto
 
 vendor_dep_ensure:
 	dep ensure
+
+update_subtree:
+	# This is an advanced maneuver.
+	# I stored the proto definitions as a subtree so that we can periodically update them.
+	# But I did some fancy stuff to make it apply a subdirectory.
+	# Go read https://stackoverflow.com/questions/23937436/add-subdirectory-of-remote-repo-with-git-subtree
+	# and decide if this is still the thing you want to do.
+	git checkout proto_remote/master
+	git pull proto_remote master
+	git checkout master
+	git rm -rf proto
+	git read-tree --prefix=proto/beeswax -u proto_remote/master:beeswax
