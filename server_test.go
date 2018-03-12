@@ -124,8 +124,8 @@ func TestBufferPool(t *testing.T) {
 
 func TestGetUserID_nils(t *testing.T) {
 	tests := []*openrtb.BidRequest{
-		&openrtb.BidRequest{},
-		&openrtb.BidRequest{User: &openrtb.BidRequest_User{}},
+		{},
+		{User: &openrtb.BidRequest_User{}},
 	}
 	for _, br := range tests {
 		u := getUserID(br)
