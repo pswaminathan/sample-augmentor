@@ -30,18 +30,13 @@ func newRedis(addr string) error {
 	return err
 }
 
-// getUserScore looks up a user ID in Redis and returns a float
-// score and an error.
-func getUserScore(c redis.Conn, uuid string) (float64, error) {
-	val, err := redis.Float64(c.Do("GET", uuid))
-	if err != nil {
-		return 0.0, err
-	}
-	return val, nil
+// getUserScore looks up a user ID in Redis and returns a float score
+func getUserScore(c redis.Conn, uuid string) float64 {
+	val, _ := redis.Float64(c.Do("GET", uuid))
+	return val
 }
 
-// getScoredSegment looks up a user ID in Redis and returns a
-// segment string.
+// getScoredSegment looks up a user ID in Redis and returns a segment string.
 func getScoredSegment(c redis.Conn, uuid string) string {
 	val, _ := redis.String(c.Do("GET", uuid))
 	return val

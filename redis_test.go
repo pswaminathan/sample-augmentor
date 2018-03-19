@@ -30,10 +30,7 @@ var (
 )
 
 func TestGetUserScore_notPresent(t *testing.T) {
-	got, err := getUserScore(c, "doesnotexist")
-	if err == nil {
-		t.Error("TestGetUserScore_notPresent: want error, got none")
-	}
+	got := getUserScore(c, "doesnotexist")
 	if want := 0.0; got != want {
 		t.Errorf("TestGetUserScore_notPresent: got %v, want %v", got, want)
 	}
@@ -43,10 +40,7 @@ func TestGetUserScore_badData(t *testing.T) {
 	user, input := "mid.283ADF1D", "hi"
 	s.Set(user, input)
 	defer s.Del(user)
-	got, err := getUserScore(c, user)
-	if err == nil {
-		t.Error("TestGetUserScore_notPresent: want error, got none")
-	}
+	got := getUserScore(c, user)
 	if want := 0.0; got != want {
 		t.Errorf("TestGetUserScore_notPresent: got %v, want %v", got, want)
 	}
@@ -56,10 +50,7 @@ func TestGetUserScore_present(t *testing.T) {
 	user, want := "mid.283ADF1E", 10.0
 	s.Set(user, "10.0")
 	defer s.Del(user)
-	got, err := getUserScore(c, user)
-	if err != nil {
-		t.Errorf("TestGetUserScore_present: expected no error, got %v", err)
-	}
+	got := getUserScore(c, user)
 	if got != want {
 		t.Errorf("TestGetUserScore_present: got %v, want %v", got, want)
 	}
